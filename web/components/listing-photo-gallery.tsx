@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,7 @@ export function ListingPhotoGallery({
   photoPaths: string[];
   publicUrls: Record<string, string>; // path -> publicUrl
 }) {
+  const router = useRouter();
   const [uploadState, uploadAction, uploadPending] = useActionState<ActionState, FormData>(
     uploadListingPhotoAction,
     {},
@@ -30,6 +33,15 @@ export function ListingPhotoGallery({
     reorderListingPhotoAction,
     {},
   );
+
+  // After any mutating action succeeds, force a full server re-fetch so the
+  // page shows the latest photoPaths (revalidatePath alone is insufficient
+  // when the re-render happens inside the same server-action request context).
+  useEffect(() => {
+    if (uploadState.ok || removeState.ok || reorderState.ok) {
+      router.refresh();
+    }
+  }, [uploadState.ok, removeState.ok, reorderState.ok, router]);
 
   const errorMsg = uploadState.error ?? removeState.error ?? reorderState.error;
   const canUpload = photoPaths.length < MAX_PHOTOS;

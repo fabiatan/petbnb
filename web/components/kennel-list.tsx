@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +41,7 @@ function toInitial(row: KennelRow): KennelInitial {
 }
 
 export function KennelList({ kennels }: { kennels: KennelRow[] }) {
+  const router = useRouter();
   const blankInitial: KennelInitial = {
     name: "",
     species_accepted: "dog",
@@ -53,6 +56,14 @@ export function KennelList({ kennels }: { kennels: KennelRow[] }) {
     toggleKennelActiveAction,
     {},
   );
+
+  // Force a full server re-fetch after toggle so the kennel list reflects
+  // the latest active state (revalidatePath alone is insufficient here).
+  useEffect(() => {
+    if (toggleState.ok) {
+      router.refresh();
+    }
+  }, [toggleState.ok, router]);
 
   return (
     <div className="space-y-4">

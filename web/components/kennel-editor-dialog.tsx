@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -59,6 +60,7 @@ export function KennelEditorDialog({
   initial: KennelInitial;
   mode: "create" | "edit";
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const action = mode === "create" ? createKennelAction : updateKennelAction;
   const [state, submit, pending] = useActionState<ActionState, FormData>(action, {});
@@ -67,6 +69,14 @@ export function KennelEditorDialog({
   if (state.ok && open) {
     queueMicrotask(() => setOpen(false));
   }
+
+  // Force a full server re-fetch after create/edit so the kennel list shows
+  // the latest data (revalidatePath alone is insufficient in the same request context).
+  useEffect(() => {
+    if (state.ok) {
+      router.refresh();
+    }
+  }, [state.ok, router]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
