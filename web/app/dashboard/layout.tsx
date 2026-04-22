@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
+import { KycBanner } from "@/components/kyc-banner";
 
 export default async function DashboardLayout({
   children,
@@ -14,7 +15,6 @@ export default async function DashboardLayout({
 
   if (!user) redirect("/sign-in");
 
-  // Load the business this admin belongs to. If none, bounce to onboarding.
   const { data: membership } = await supabase
     .from("business_members")
     .select("business_id, businesses!inner(id, name)")
@@ -31,7 +31,10 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen flex">
       <DashboardSidebar businessName={businessName} />
-      <main className="flex-1 p-6">{children}</main>
+      <div className="flex-1 flex flex-col">
+        <KycBanner />
+        <main className="flex-1 p-6">{children}</main>
+      </div>
     </div>
   );
 }
