@@ -23,3 +23,10 @@ CREATE INDEX notifications_unread_idx ON notifications(user_id) WHERE read_at IS
 
 CREATE INDEX peak_calendar_date_idx ON peak_calendar(date);
 CREATE INDEX availability_overrides_kennel_date_idx ON availability_overrides(kennel_type_id, date);
+
+-- Review lookups by business (dashboard queries, public listing page)
+CREATE INDEX reviews_business_id_idx ON reviews(business_id);
+CREATE INDEX review_responses_business_id_idx ON review_responses(business_id);
+
+-- Booking lookups by listing (dashboard "show all bookings for this listing" queries)
+CREATE INDEX bookings_listing_id_idx ON bookings(listing_id);

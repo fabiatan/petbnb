@@ -52,6 +52,9 @@ CREATE POLICY vax_owner ON vaccination_certs
 -- business_members have full access to their own rows.
 CREATE POLICY businesses_public_read ON businesses
   FOR SELECT USING (kyc_status = 'verified' AND status = 'active');
+-- NOTE: initial business creation + first business_members row must go through a
+-- SECURITY DEFINER onboarding function — there is no direct INSERT path because
+-- the WITH CHECK requires the caller to already be a member.
 CREATE POLICY businesses_member_all ON businesses
   FOR ALL USING (is_business_member(id))
   WITH CHECK (is_business_member(id));
@@ -129,6 +132,8 @@ CREATE POLICY cert_snapshots_read ON booking_cert_snapshots
   );
 
 -- reviews: public read (verified businesses only); owner writes
+-- Reviews are intentionally immutable after posting. No UPDATE or DELETE policies.
+-- If an owner needs to amend a review, the platform handles it via SECURITY DEFINER.
 CREATE POLICY reviews_public_read ON reviews
   FOR SELECT USING (true);
 CREATE POLICY reviews_owner_insert ON reviews
