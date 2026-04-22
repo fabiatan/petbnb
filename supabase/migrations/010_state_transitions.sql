@@ -367,3 +367,66 @@ BEGIN
   FROM business_members bm WHERE bm.business_id = v_row.business_id;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION cancel_booking_by_owner(p_booking_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row bookings%ROWTYPE;
+BEGIN
+  SELECT * INTO v_row FROM bookings WHERE id = p_booking_id FOR UPDATE;
+  IF v_row IS NULL THEN RAISE EXCEPTION 'booking not found'; END IF;
+  IF v_row.owner_id != auth.uid() THEN RAISE EXCEPTION 'only owner may cancel'; END IF;
+  IF v_row.status != 'confirmed' THEN
+    RAISE EXCEPTION 'booking not confirmed (is %)', v_row.status;
+  END IF;
+
+  UPDATE bookings SET
+    status = 'cancelled_by_owner',
+    terminal_reason = 'owner_cancelled',
+    acted_at = now()
+  WHERE id = p_booking_id;
+
+  -- Refund calculation deferred to Phase 3/5
+  INSERT INTO notifications (user_id, kind, payload)
+  VALUES (v_row.owner_id, 'booking_cancelled', jsonb_build_object('booking_id', p_booking_id, 'by','owner'));
+  INSERT INTO notifications (user_id, kind, payload)
+  SELECT bm.user_id, 'booking_cancelled', jsonb_build_object('booking_id', p_booking_id, 'by','owner')
+  FROM business_members bm WHERE bm.business_id = v_row.business_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION cancel_booking_by_business(p_booking_id uuid, p_reason text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row bookings%ROWTYPE;
+BEGIN
+  SELECT * INTO v_row FROM bookings WHERE id = p_booking_id FOR UPDATE;
+  IF v_row IS NULL THEN RAISE EXCEPTION 'booking not found'; END IF;
+  IF NOT is_business_member(v_row.business_id) THEN
+    RAISE EXCEPTION 'not a member of owning business';
+  END IF;
+  IF v_row.status != 'confirmed' THEN
+    RAISE EXCEPTION 'booking not confirmed (is %)', v_row.status;
+  END IF;
+
+  UPDATE bookings SET
+    status = 'cancelled_by_business',
+    terminal_reason = 'business_cancelled',
+    acted_at = now(),
+    special_instructions = COALESCE(special_instructions, '') ||
+      E'\n[cancellation by business] ' || COALESCE(p_reason, 'no reason given')
+  WHERE id = p_booking_id;
+
+  INSERT INTO notifications (user_id, kind, payload)
+  VALUES (v_row.owner_id, 'booking_cancelled',
+    jsonb_build_object('booking_id', p_booking_id, 'by','business','reason', p_reason));
+END;
+$$;
