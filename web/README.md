@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PetBnB Web (Phase 1a)
 
-## Getting Started
+Business-facing Next.js 15 App Router app. Backed by the Supabase project at `../supabase`.
 
-First, run the development server:
+## Layout
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+app/
+  (auth)/                 sign-up, sign-in, auth server actions
+  auth/callback           OAuth/magic-link callback (unused in 1a)
+  onboarding/             business registration form + RPC call
+  dashboard/              authenticated shell + 6 stub routes
+  page.tsx                auth-aware root redirect
+lib/
+  db/                     Drizzle schema (hand-written to mirror supabase/migrations/)
+  supabase/               client / server / middleware factories
+  utils.ts                shadcn cn()
+components/ui/            shadcn primitives (button, input, label, card, separator)
+components/dashboard-sidebar.tsx
+e2e/                      Playwright smoke tests
+middleware.ts             route-level auth gate
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Auth flow
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. `/sign-up` — creates `auth.users` + `user_profiles` rows, redirects to `/onboarding`.
+2. `/onboarding` — calls `create_business_onboarding` RPC (SECURITY DEFINER), atomically creates `businesses` + `business_members` + `listings`, redirects to `/dashboard`.
+3. `/dashboard/*` — requires auth; if user isn't in any `business_members` row, redirects to `/onboarding`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All mutations go through server actions (not client-side Supabase calls) so we can revalidate the Next.js cache correctly.
 
-## Learn More
+## Drizzle vs Supabase CLI
 
-To learn more about Next.js, take a look at the following resources:
+Supabase CLI owns schema changes (migrations live in `../supabase/migrations/`). Drizzle is used only for TypeScript types and potentially for read queries in later phases. `drizzle-kit push` is never run.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To explore the schema with Drizzle Studio:
+```bash
+pnpm exec drizzle-kit studio
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Handoff to Phase 1b
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- KYC document upload goes into `app/dashboard/settings/kyc/page.tsx` and Supabase Storage (`kyc-documents` bucket, private).
+- The `businesses.kyc_status` enum already has `pending | verified | rejected`; 1a leaves every new business at `pending` — 1b adds UI to upload docs; platform_admin verifies externally (Supabase Studio) until a later phase builds an internal admin UI.

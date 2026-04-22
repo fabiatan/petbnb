@@ -7,19 +7,34 @@ Two-sided marketplace for Malaysian pet boarding. iOS app for owners + Next.js w
 ## Status
 
 - [x] **Phase 0** — Supabase schema, RLS, state-machine functions, pg_cron sweeps. See `supabase/README.md`.
-- [ ] Phase 1 — Business web dashboard (Next.js)
+- [x] **Phase 1a** — Next.js scaffold, Supabase Auth, Drizzle schema, business onboarding RPC. See `web/README.md`.
+- [ ] Phase 1b — KYC upload (Supabase Storage) and documents review
+- [ ] Phase 1c — Listing editor + kennel CRUD + photo management
+- [ ] Phase 1d — Calendar / availability grid + real Inbox
 - [ ] Phase 2 — iOS owner app (SwiftUI)
 - [ ] Phase 3 — iPay88 integration
 - [ ] Phase 4 — Reviews + ratings wiring
 - [ ] Phase 5 — Public SEO listings + transactional email
 - [ ] Phase 6 — Closed beta in KL
 
-## Local dev (Phase 0)
+## Local dev
+
+### Supabase (runs from project root)
 
 ```bash
-cd supabase
-supabase start
+supabase start           # boots Postgres + Studio at :54323
 supabase db reset        # applies migrations + seed.sql
 supabase test db         # runs pgTAP suite
-./scripts/verify-phase0.sh
+./supabase/scripts/verify-phase0.sh
+```
+
+### Web app (runs from `web/`)
+
+```bash
+cd web
+cp .env.local.example .env.local
+# paste the anon key printed by `supabase status` into .env.local
+pnpm install
+pnpm dev                 # http://localhost:3000
+pnpm exec playwright test  # E2E smoke test
 ```
