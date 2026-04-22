@@ -29,6 +29,19 @@ middleware.ts             route-level auth gate
 
 All mutations go through server actions (not client-side Supabase calls) so we can revalidate the Next.js cache correctly.
 
+## KYC upload flow (Phase 1b)
+
+1. New business signs up + onboards → lands on `/dashboard/inbox`.
+2. Dashboard layout renders `<KycBanner>` — for any business with `kyc_status='pending'`, shows a prompt linking to `/dashboard/settings/kyc`.
+3. `/dashboard/settings/kyc` renders 4 `<KycDocumentCard>`s — one per doc type. Each card has an upload input + server-action submit button.
+4. Server action validates (≤ 10 MB, PDF/JPEG/PNG only), uploads to the `kyc-documents` Storage bucket at path `businesses/{business_id}/{doc_type}/{safe_filename}`, and PATCHes `businesses.kyc_documents` jsonb with a reference.
+5. Once all 4 docs are uploaded, the banner flips to "KYC under review."
+6. Platform admin manually flips `businesses.kyc_status` to `verified` in Supabase Studio (no internal admin UI in Phase 1b).
+
+## Storage RLS
+
+The `kyc-documents` bucket's RLS policy scopes read/write to business members by parsing the UUID in the path. See `supabase/migrations/014_kyc_storage.sql`. Cross-business access is proved blocked by `supabase/tests/011_kyc_storage_rls.sql`.
+
 ## Drizzle vs Supabase CLI
 
 Supabase CLI owns schema changes (migrations live in `../supabase/migrations/`). Drizzle is used only for TypeScript types and potentially for read queries in later phases. `drizzle-kit push` is never run.
