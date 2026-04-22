@@ -1,0 +1,16 @@
+# Supabase local dev
+supabase/.branches
+supabase/.temp
+supabase/.env
+supabase/.env.local
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Node (for later phases)
+node_modules/
+.next/
+dist/
