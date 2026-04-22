@@ -41,7 +41,7 @@ BEGIN
   v_booking_id := create_booking_request(
     '66666666-ffff-ffff-ffff-ffffffffffff'::uuid,
     ARRAY['33333333-cccc-cccc-cccc-cccccccccccc'::uuid],
-    '2026-05-01'::date, '2026-05-03'::date,
+    '2026-04-14'::date, '2026-04-16'::date,
     'Test notes'
   );
   PERFORM set_config('petbnb.test_booking_id', v_booking_id::text, true);

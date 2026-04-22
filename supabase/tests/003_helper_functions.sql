@@ -14,8 +14,8 @@ INSERT INTO kennel_types (id, listing_id, name, species_accepted, size_range, ca
 VALUES ('11111111-2222-3333-4444-777777777777','11111111-2222-3333-4444-666666666666',
         'Small','dog','small',4,80,100);
 
--- Seed peak calendar: 2026-05-02 is peak (global)
-INSERT INTO peak_calendar (date, label) VALUES ('2026-05-02', 'Test weekend');
+-- Seed peak calendar: 2026-04-15 is peak (global)
+INSERT INTO peak_calendar (date, label) VALUES ('2026-04-15', 'Test weekend');
 
 -- compute_stay_subtotal returns numeric
 SELECT has_function('public', 'compute_stay_subtotal', ARRAY['uuid','date','date']);
@@ -23,13 +23,13 @@ SELECT has_function('public', 'compute_stay_subtotal', ARRAY['uuid','date','date
 -- 2 nights, one off-peak, one peak => 80 + 100 = 180
 SELECT is(compute_stay_subtotal(
   '11111111-2222-3333-4444-777777777777'::uuid,
-  '2026-05-01'::date, '2026-05-03'::date),
+  '2026-04-14'::date, '2026-04-16'::date),
   180::numeric, '2 nights, 1 off-peak + 1 peak = 180');
 
 -- 1 night, off-peak => 80
 SELECT is(compute_stay_subtotal(
   '11111111-2222-3333-4444-777777777777'::uuid,
-  '2026-05-01'::date, '2026-05-02'::date),
+  '2026-04-14'::date, '2026-04-15'::date),
   80::numeric, '1 night off-peak = 80');
 
 -- kennel_available checks capacity - (confirmed+pending) >= 1
@@ -38,7 +38,7 @@ SELECT has_function('public', 'kennel_available', ARRAY['uuid','date','date','in
 -- Empty kennel: capacity 4, needed 1 => available
 SELECT ok(kennel_available(
   '11111111-2222-3333-4444-777777777777'::uuid,
-  '2026-05-01'::date, '2026-05-03'::date, 1),
+  '2026-04-14'::date, '2026-04-16'::date, 1),
   'empty kennel is available');
 
 SELECT * FROM finish();
