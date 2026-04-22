@@ -42,6 +42,21 @@ All mutations go through server actions (not client-side Supabase calls) so we c
 
 The `kyc-documents` bucket's RLS policy scopes read/write to business members by parsing the UUID in the path. See `supabase/migrations/014_kyc_storage.sql`. Cross-business access is proved blocked by `supabase/tests/011_kyc_storage_rls.sql`.
 
+## Listing editor flow (Phase 1c)
+
+1. `/dashboard/listing` loads the business's listing row + kennel types.
+2. Three sections: Info (description, amenities, house rules, cancellation policy), Photos (up to 12, with up/down reorder + remove), Kennels (add/edit/toggle-active dialog).
+3. Server actions in `app/dashboard/listing/actions.ts` handle all mutations and call `revalidatePath` so the page updates after each action.
+4. Photos live in the public `listing-photos` Storage bucket at path `businesses/{business_id}/listing/{uuid}_{filename}`. Storage RLS makes SELECT public (any user/anon can view) but INSERT/UPDATE/DELETE business-member-only.
+5. Kennel deactivation is soft: we set `active = false` instead of deleting so historical bookings' FK references remain valid.
+
+## Known limitations (to address in later phases)
+
+- Photo reorder uses up/down buttons, not drag-and-drop. 5+
+- Amenities are free-form strings — no taxonomy. Could become a picker later.
+- Description is plain textarea, no rich text.
+- Kennel hard delete is never offered. If you want to clean up, deactivate and filter.
+
 ## Drizzle vs Supabase CLI
 
 Supabase CLI owns schema changes (migrations live in `../supabase/migrations/`). Drizzle is used only for TypeScript types and potentially for read queries in later phases. `drizzle-kit push` is never run.
