@@ -16,9 +16,12 @@ ALTER TABLE review_responses      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications         ENABLE ROW LEVEL SECURITY;
 
 -- Helper: is the current auth.uid() a member of this business?
+-- SECURITY DEFINER + locked search_path: required to break RLS recursion
+-- (this function is called from business_members' own RLS policy).
 CREATE OR REPLACE FUNCTION is_business_member(p_business_id uuid)
 RETURNS boolean
-LANGUAGE sql STABLE
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM business_members
