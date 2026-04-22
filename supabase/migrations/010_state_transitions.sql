@@ -341,6 +341,11 @@ AS $$
 DECLARE
   v_row bookings%ROWTYPE;
 BEGIN
+  IF current_setting('request.jwt.claim.role', true) IS DISTINCT FROM 'service_role'
+     AND session_user NOT IN ('postgres','supabase_admin') THEN
+    RAISE EXCEPTION 'confirm_payment may only be called by service_role';
+  END IF;
+
   SELECT * INTO v_row FROM bookings WHERE ipay88_reference = p_ref FOR UPDATE;
   IF v_row IS NULL THEN
     RAISE EXCEPTION 'no booking with reference %', p_ref;
