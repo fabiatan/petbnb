@@ -279,3 +279,91 @@ BEGIN
   RETURN v_booking_id;
 END;
 $$;
+
+-- create_payment_intent: caller (owner) gets a ref_no for the booking.
+-- Booking must be in 'accepted' or 'pending_payment'. Freezes the amount.
+CREATE OR REPLACE FUNCTION create_payment_intent(p_booking_id uuid)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row bookings%ROWTYPE;
+  v_ref text;
+BEGIN
+  SELECT * INTO v_row FROM bookings WHERE id = p_booking_id FOR UPDATE;
+  IF v_row IS NULL THEN RAISE EXCEPTION 'booking not found'; END IF;
+  IF v_row.owner_id != auth.uid() THEN
+    RAISE EXCEPTION 'only booking owner can create payment intent';
+  END IF;
+  IF v_row.status NOT IN ('accepted','pending_payment') THEN
+    RAISE EXCEPTION 'booking % not payable (is %)', p_booking_id, v_row.status;
+  END IF;
+  IF v_row.payment_deadline < now() THEN
+    RAISE EXCEPTION 'payment deadline passed';
+  END IF;
+
+  -- If a ref was already issued, return it (idempotent)
+  IF v_row.ipay88_reference IS NOT NULL THEN
+    RETURN v_row.ipay88_reference;
+  END IF;
+
+  -- Ref format: PETBNB-<8-char uid>-<booking short>
+  v_ref := 'PETBNB-' || substr(replace(gen_random_uuid()::text,'-',''),1,8) || '-'
+           || substr(p_booking_id::text, 1, 8);
+
+  -- If booking was 'accepted', transition to 'pending_payment'
+  UPDATE bookings SET
+    ipay88_reference = v_ref,
+    status = CASE WHEN status = 'accepted' THEN 'pending_payment'::booking_status ELSE status END
+  WHERE id = p_booking_id;
+
+  RETURN v_ref;
+END;
+$$;
+
+-- confirm_payment: called by the iPay88 webhook Edge Function.
+-- Idempotent by ref_no. Only transitions pending_payment -> confirmed.
+-- Takes received_amount so we can detect tampering (iPay88 tells us what was charged).
+CREATE OR REPLACE FUNCTION confirm_payment(p_ref text, p_amount numeric)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row bookings%ROWTYPE;
+BEGIN
+  SELECT * INTO v_row FROM bookings WHERE ipay88_reference = p_ref FOR UPDATE;
+  IF v_row IS NULL THEN
+    RAISE EXCEPTION 'no booking with reference %', p_ref;
+  END IF;
+
+  -- Idempotent: already confirmed, do nothing
+  IF v_row.status = 'confirmed' THEN
+    RETURN;
+  END IF;
+
+  IF v_row.status != 'pending_payment' THEN
+    RAISE EXCEPTION 'booking for ref % not in pending_payment (is %)', p_ref, v_row.status;
+  END IF;
+
+  -- Amount must match subtotal to the cent
+  IF abs(p_amount - v_row.subtotal_myr) > 0.01 THEN
+    RAISE EXCEPTION 'amount mismatch: expected %, got %', v_row.subtotal_myr, p_amount;
+  END IF;
+
+  UPDATE bookings SET
+    status = 'confirmed',
+    acted_at = now()
+  WHERE id = v_row.id;
+
+  INSERT INTO notifications (user_id, kind, payload)
+  VALUES (v_row.owner_id, 'payment_confirmed', jsonb_build_object('booking_id', v_row.id, 'ref', p_ref));
+
+  INSERT INTO notifications (user_id, kind, payload)
+  SELECT bm.user_id, 'payment_confirmed', jsonb_build_object('booking_id', v_row.id, 'ref', p_ref)
+  FROM business_members bm WHERE bm.business_id = v_row.business_id;
+END;
+$$;
