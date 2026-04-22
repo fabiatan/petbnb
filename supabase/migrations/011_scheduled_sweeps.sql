@@ -15,14 +15,14 @@ BEGIN
     WHERE status = 'requested'
       AND requested_at < now() - interval '24 hours'
     RETURNING id, owner_id
+  ), notify AS (
+    INSERT INTO notifications (user_id, kind, payload)
+    SELECT owner_id, 'booking_cancelled',
+      jsonb_build_object('booking_id', id, 'reason','request_timed_out')
+    FROM expired
+    RETURNING 1
   )
   SELECT count(*) INTO v_count FROM expired;
-
-  INSERT INTO notifications (user_id, kind, payload)
-  SELECT owner_id, 'booking_cancelled', jsonb_build_object('booking_id', id, 'reason','request_timed_out')
-  FROM bookings WHERE status = 'expired' AND terminal_reason = 'no_response_24h'
-    AND acted_at > now() - interval '1 minute';
-
   RETURN v_count;
 END;
 $$;
@@ -38,11 +38,9 @@ DECLARE v_count integer;
 BEGIN
   UPDATE bookings SET
     status = 'expired',
-    terminal_reason = (CASE
-      WHEN status = 'pending_payment' AND payment_deadline <= requested_at + interval '20 minutes'
-        THEN 'no_payment_15min_instant'
-      ELSE 'no_payment_24h'
-    END)::booking_terminal_reason,
+    terminal_reason = (CASE WHEN is_instant_book
+                            THEN 'no_payment_15min_instant'
+                            ELSE 'no_payment_24h' END)::booking_terminal_reason,
     acted_at = now()
   WHERE status IN ('accepted','pending_payment')
     AND payment_deadline < now();
@@ -68,13 +66,13 @@ BEGIN
     WHERE status = 'confirmed'
       AND check_out < CURRENT_DATE
     RETURNING id, owner_id
+  ), notify AS (
+    INSERT INTO notifications (user_id, kind, payload)
+    SELECT owner_id, 'review_prompt', jsonb_build_object('booking_id', id)
+    FROM done
+    RETURNING 1
   )
   SELECT count(*) INTO v_count FROM done;
-
-  INSERT INTO notifications (user_id, kind, payload)
-  SELECT owner_id, 'review_prompt', jsonb_build_object('booking_id', id)
-  FROM bookings WHERE status = 'completed' AND acted_at > now() - interval '1 minute';
-
   RETURN v_count;
 END;
 $$;

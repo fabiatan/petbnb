@@ -80,13 +80,13 @@ BEGIN
     owner_id, business_id, listing_id, kennel_type_id,
     check_in, check_out, nights,
     subtotal_myr, platform_fee_myr, business_payout_myr,
-    status, special_instructions, payment_deadline
+    status, special_instructions, payment_deadline, is_instant_book
   )
   VALUES (
     v_owner_id, v_business_id, v_listing_id, p_kennel_type_id,
     p_check_in, p_check_out, v_nights,
     v_subtotal, v_platform_fee, v_subtotal - v_platform_fee,
-    'requested', p_special_instructions, now() + interval '24 hours'
+    'requested', p_special_instructions, now() + interval '24 hours', false
   )
   RETURNING id INTO v_booking_id;
 
@@ -181,8 +181,7 @@ BEGIN
   UPDATE bookings SET
     status = 'declined',
     acted_at = now(),
-    special_instructions = COALESCE(special_instructions, '') ||
-      CASE WHEN p_reason IS NOT NULL THEN E'\n[decline reason] ' || p_reason ELSE '' END
+    cancellation_reason = p_reason
   WHERE id = p_booking_id;
 
   INSERT INTO notifications (user_id, kind, payload)
@@ -258,14 +257,14 @@ BEGIN
     owner_id, business_id, listing_id, kennel_type_id,
     check_in, check_out, nights,
     subtotal_myr, platform_fee_myr, business_payout_myr,
-    status, special_instructions, payment_deadline, acted_at
+    status, special_instructions, payment_deadline, acted_at, is_instant_book
   )
   VALUES (
     v_owner_id, v_business_id, v_listing_id, p_kennel_type_id,
     p_check_in, p_check_out, v_nights,
     v_subtotal, v_platform_fee, v_subtotal - v_platform_fee,
     'pending_payment', p_special_instructions,
-    now() + interval '15 minutes', now()
+    now() + interval '15 minutes', now(), true
   )
   RETURNING id INTO v_booking_id;
 
@@ -398,6 +397,7 @@ BEGIN
   UPDATE bookings SET
     status = 'cancelled_by_owner',
     terminal_reason = 'owner_cancelled',
+    cancellation_reason = 'owner cancellation',
     acted_at = now()
   WHERE id = p_booking_id;
 
@@ -432,8 +432,7 @@ BEGIN
     status = 'cancelled_by_business',
     terminal_reason = 'business_cancelled',
     acted_at = now(),
-    special_instructions = COALESCE(special_instructions, '') ||
-      E'\n[cancellation by business] ' || COALESCE(p_reason, 'no reason given')
+    cancellation_reason = p_reason
   WHERE id = p_booking_id;
 
   INSERT INTO notifications (user_id, kind, payload)
