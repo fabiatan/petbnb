@@ -23,8 +23,8 @@ INSERT INTO pets (id, owner_id, name, species, breed, weight_kg) VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO vaccination_certs (pet_id, file_url, vaccines_covered, issued_on, expires_on) VALUES
-  ('30000000-0000-0000-0000-000000000001','https://example.test/cert-mochi.pdf','{rabies,core}','2025-01-15','2027-01-15'),
-  ('30000000-0000-0000-0000-000000000002','https://example.test/cert-luna.pdf','{fvrcp}','2025-03-01','2027-03-01')
+  ('30000000-0000-0000-0000-000000000001','https://example.test/cert-mochi.pdf','{rabies,core}','2025-01-15','2028-01-15'),
+  ('30000000-0000-0000-0000-000000000002','https://example.test/cert-luna.pdf','{fvrcp}','2025-03-01','2028-03-01')
 ON CONFLICT DO NOTHING;
 
 -- Businesses
