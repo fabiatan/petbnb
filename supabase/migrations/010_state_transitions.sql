@@ -140,6 +140,12 @@ BEGIN
     RAISE EXCEPTION 'booking % not in requested state (is %)', p_booking_id, v_row.status;
   END IF;
 
+  -- Lock the kennel row and re-check availability (another request could have been accepted since this one was created)
+  PERFORM 1 FROM kennel_types WHERE id = v_row.kennel_type_id FOR UPDATE;
+  IF NOT kennel_available(v_row.kennel_type_id, v_row.check_in, v_row.check_out, 1) THEN
+    RAISE EXCEPTION 'kennel % no longer available for booking % (overlapping booking accepted)', v_row.kennel_type_id, p_booking_id;
+  END IF;
+
   UPDATE bookings SET
     status = 'accepted',
     acted_at = now(),
