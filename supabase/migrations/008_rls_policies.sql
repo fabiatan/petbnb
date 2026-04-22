@@ -140,7 +140,15 @@ CREATE POLICY cert_snapshots_read ON booking_cert_snapshots
 CREATE POLICY reviews_public_read ON reviews
   FOR SELECT USING (true);
 CREATE POLICY reviews_owner_insert ON reviews
-  FOR INSERT WITH CHECK (owner_id = auth.uid());
+  FOR INSERT WITH CHECK (
+    owner_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM bookings b
+      WHERE b.id = booking_id
+        AND b.owner_id = auth.uid()
+        AND b.status = 'completed'
+    )
+  );
 
 -- review_responses: public read; business members write
 CREATE POLICY review_responses_public_read ON review_responses
