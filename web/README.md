@@ -57,6 +57,25 @@ The `kyc-documents` bucket's RLS policy scopes read/write to business members by
 - Description is plain textarea, no rich text.
 - Kennel hard delete is never offered. If you want to clean up, deactivate and filter.
 
+## Inbox + calendar flow (Phase 1d)
+
+1. `/dashboard/inbox` is the landing page after sign-in. Server component fetches bookings in `requested` status for the caller's business, joins pets + owner profile + cert-snapshot presence, renders `<BookingRequestCard>` per row. A `<InboxKpiStrip>` at the top shows pending count, today check-in, today check-out, and this-week business-payout revenue.
+2. Accept / Decline buttons call the Phase 0 RPCs `accept_booking` / `decline_booking` via server actions in `app/dashboard/inbox/actions.ts`. Client components use `router.refresh()` after success.
+3. `/dashboard/calendar` renders a 14-day kennel × date grid. URL param `?start=YYYY-MM-DD` drives the window; Prev / Today / Next links navigate by week.
+4. Cell colors: white = open, amber = some bookings, dark = fully booked, red = manual block. Clicking an empty cell toggles a `manual_block` row in `availability_overrides`.
+
+## Cross-user RLS for inbox
+
+Phase 1d added two SELECT policies so business admins can render their customers' info:
+- `pets_business_read` — a business_member can SELECT any pet linked via `booking_pets` to a booking at their business.
+- `user_profiles_business_read` — a business_member can SELECT the profile of any user with a booking at their business.
+
+Both are join-based — scoped correctly but runtime cost scales with the number of bookings. If this becomes a hotspot, consider denormalising `business_ids uuid[]` onto `pets` and maintaining it via trigger.
+
+## Phase 1 complete
+
+All four Phase 1 slices (a/b/c/d) are shipped. The business dashboard is functionally whole. Next up: Phase 2 — iOS owner app (SwiftUI), which reuses Court Booking POC patterns and consumes this backend.
+
 ## Drizzle vs Supabase CLI
 
 Supabase CLI owns schema changes (migrations live in `../supabase/migrations/`). Drizzle is used only for TypeScript types and potentially for read queries in later phases. `drizzle-kit push` is never run.

@@ -10,7 +10,10 @@ Two-sided marketplace for Malaysian pet boarding. iOS app for owners + Next.js w
 - [x] **Phase 1a** — Next.js scaffold, Supabase Auth, Drizzle schema, business onboarding RPC. See `web/README.md`.
 - [x] **Phase 1b** — KYC upload and documents review
 - [x] **Phase 1c** — Listing editor + kennel CRUD + photos
-- [ ] Phase 1d — Calendar / availability grid + real Inbox
+- [x] **Phase 1d** — Calendar + real inbox
+
+**Phase 1 (business dashboard) — complete.**
+
 - [ ] Phase 2 — iOS owner app (SwiftUI)
 - [ ] Phase 3 — iPay88 integration
 - [ ] Phase 4 — Reviews + ratings wiring
