@@ -1,0 +1,118 @@
+-- create_booking_request: request-to-book path.
+-- Preconditions:
+--   - caller owns every pet in p_pet_ids
+--   - kennel is active and NOT instant_book
+--   - each pet has a vaccination cert valid through check_out
+--   - capacity - current occupancy - manual blocks >= 1 across [check_in, check_out)
+-- Effect: inserts booking with status='requested', acceptance deadline = now()+24h.
+CREATE OR REPLACE FUNCTION create_booking_request(
+  p_kennel_type_id uuid,
+  p_pet_ids uuid[],
+  p_check_in date,
+  p_check_out date,
+  p_special_instructions text DEFAULT NULL
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_owner_id uuid := auth.uid();
+  v_kennel kennel_types%ROWTYPE;
+  v_business_id uuid;
+  v_listing_id uuid;
+  v_nights integer;
+  v_subtotal numeric;
+  v_platform_fee numeric;
+  v_booking_id uuid;
+  v_pet_id uuid;
+BEGIN
+  IF v_owner_id IS NULL THEN
+    RAISE EXCEPTION 'auth.uid() is null; must be called by an authenticated user';
+  END IF;
+
+  IF p_check_out <= p_check_in THEN
+    RAISE EXCEPTION 'check_out must be after check_in';
+  END IF;
+
+  IF array_length(p_pet_ids, 1) IS NULL OR array_length(p_pet_ids, 1) = 0 THEN
+    RAISE EXCEPTION 'at least one pet required';
+  END IF;
+
+  -- Lock the kennel row for the duration of the tx so racing requests serialize
+  SELECT * INTO v_kennel FROM kennel_types WHERE id = p_kennel_type_id AND active FOR UPDATE;
+  IF v_kennel IS NULL THEN
+    RAISE EXCEPTION 'kennel_type % is not active or not found', p_kennel_type_id;
+  END IF;
+
+  IF v_kennel.instant_book THEN
+    RAISE EXCEPTION 'kennel is instant_book; use create_instant_booking instead';
+  END IF;
+
+  SELECT l.id, l.business_id INTO v_listing_id, v_business_id
+    FROM listings l WHERE l.id = v_kennel.listing_id;
+
+  -- Every pet must belong to the caller
+  FOREACH v_pet_id IN ARRAY p_pet_ids LOOP
+    PERFORM 1 FROM pets WHERE id = v_pet_id AND owner_id = v_owner_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'pet % does not belong to caller', v_pet_id;
+    END IF;
+    IF NOT pet_has_valid_cert(v_pet_id, p_check_out) THEN
+      RAISE EXCEPTION 'pet % has no valid vaccination cert for this stay', v_pet_id
+        USING ERRCODE = 'P0001';
+    END IF;
+  END LOOP;
+
+  IF NOT kennel_available(p_kennel_type_id, p_check_in, p_check_out, 1) THEN
+    RAISE EXCEPTION 'kennel_type % not available for % to %', p_kennel_type_id, p_check_in, p_check_out;
+  END IF;
+
+  v_nights := (p_check_out - p_check_in);
+  v_subtotal := compute_stay_subtotal(p_kennel_type_id, p_check_in, p_check_out);
+
+  -- Commission: resolved from business.commission_rate_bps (defaults to 1200 = 12%)
+  v_platform_fee := round(v_subtotal * (
+    (SELECT commission_rate_bps FROM businesses WHERE id = v_business_id) / 10000.0
+  ), 2);
+
+  INSERT INTO bookings (
+    owner_id, business_id, listing_id, kennel_type_id,
+    check_in, check_out, nights,
+    subtotal_myr, platform_fee_myr, business_payout_myr,
+    status, special_instructions, payment_deadline
+  )
+  VALUES (
+    v_owner_id, v_business_id, v_listing_id, p_kennel_type_id,
+    p_check_in, p_check_out, v_nights,
+    v_subtotal, v_platform_fee, v_subtotal - v_platform_fee,
+    'requested', p_special_instructions, now() + interval '24 hours'
+  )
+  RETURNING id INTO v_booking_id;
+
+  -- booking_pets
+  INSERT INTO booking_pets (booking_id, pet_id)
+  SELECT v_booking_id, unnest(p_pet_ids);
+
+  -- Cert snapshots (latest cert per pet)
+  INSERT INTO booking_cert_snapshots (booking_id, pet_id, vaccination_cert_id, file_url, expires_on)
+  SELECT v_booking_id, vc.pet_id, vc.id, vc.file_url, vc.expires_on
+  FROM vaccination_certs vc
+  WHERE vc.pet_id = ANY(p_pet_ids)
+    AND vc.id = (
+      SELECT id FROM vaccination_certs vc2
+      WHERE vc2.pet_id = vc.pet_id
+      ORDER BY expires_on DESC LIMIT 1
+    );
+
+  -- Notify owner + business admins
+  INSERT INTO notifications (user_id, kind, payload)
+  VALUES (v_owner_id, 'request_submitted', jsonb_build_object('booking_id', v_booking_id));
+
+  INSERT INTO notifications (user_id, kind, payload)
+  SELECT bm.user_id, 'request_submitted', jsonb_build_object('booking_id', v_booking_id)
+  FROM business_members bm WHERE bm.business_id = v_business_id;
+
+  RETURN v_booking_id;
+END;
+$$;
