@@ -116,3 +116,70 @@ BEGIN
   RETURN v_booking_id;
 END;
 $$;
+
+-- accept_booking: business_admin transitions requested -> accepted
+-- Sets payment_deadline = now() + 24h
+CREATE OR REPLACE FUNCTION accept_booking(p_booking_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row bookings%ROWTYPE;
+  v_uid uuid := auth.uid();
+BEGIN
+  SELECT * INTO v_row FROM bookings WHERE id = p_booking_id FOR UPDATE;
+  IF v_row IS NULL THEN
+    RAISE EXCEPTION 'booking % not found', p_booking_id;
+  END IF;
+  IF NOT is_business_member(v_row.business_id) THEN
+    RAISE EXCEPTION 'not a member of owning business';
+  END IF;
+  IF v_row.status != 'requested' THEN
+    RAISE EXCEPTION 'booking % not in requested state (is %)', p_booking_id, v_row.status;
+  END IF;
+
+  UPDATE bookings SET
+    status = 'accepted',
+    acted_at = now(),
+    payment_deadline = now() + interval '24 hours'
+  WHERE id = p_booking_id;
+
+  INSERT INTO notifications (user_id, kind, payload)
+  VALUES (v_row.owner_id, 'request_accepted', jsonb_build_object('booking_id', p_booking_id));
+END;
+$$;
+
+-- decline_booking: business_admin transitions requested -> declined
+CREATE OR REPLACE FUNCTION decline_booking(p_booking_id uuid, p_reason text DEFAULT NULL)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row bookings%ROWTYPE;
+BEGIN
+  SELECT * INTO v_row FROM bookings WHERE id = p_booking_id FOR UPDATE;
+  IF v_row IS NULL THEN
+    RAISE EXCEPTION 'booking % not found', p_booking_id;
+  END IF;
+  IF NOT is_business_member(v_row.business_id) THEN
+    RAISE EXCEPTION 'not a member of owning business';
+  END IF;
+  IF v_row.status != 'requested' THEN
+    RAISE EXCEPTION 'booking % not in requested state (is %)', p_booking_id, v_row.status;
+  END IF;
+
+  UPDATE bookings SET
+    status = 'declined',
+    acted_at = now(),
+    special_instructions = COALESCE(special_instructions, '') ||
+      CASE WHEN p_reason IS NOT NULL THEN E'\n[decline reason] ' || p_reason ELSE '' END
+  WHERE id = p_booking_id;
+
+  INSERT INTO notifications (user_id, kind, payload)
+  VALUES (v_row.owner_id, 'request_declined', jsonb_build_object('booking_id', p_booking_id, 'reason', p_reason));
+END;
+$$;
