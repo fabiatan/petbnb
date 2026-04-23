@@ -26,13 +26,23 @@ struct PaymentStubView: View {
             Section {
                 if let ref = reference ?? effectiveBooking.ipay88_reference {
                     LabeledContent("Reference", value: ref)
-                    Text("iPay88 integration is stubbed for Phase 2c. To simulate a successful webhook, run:")
+                    Text("Run the Edge Function locally and fire a mock webhook (Phase 2d):")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Text("psql \"postgresql://postgres:postgres@127.0.0.1:54322/postgres\" -c \"SELECT confirm_payment('\(ref)', \(String(format: "%.2f", summary.booking.subtotal_myr))::numeric);\"")
+                    Text("supabase functions serve ipay88-webhook --no-verify-jwt")
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.primary)
                         .textSelection(.enabled)
+                    Text("# then in another terminal:")
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                    Text("curl -X POST http://127.0.0.1:54321/functions/v1/ipay88-webhook -H 'Content-Type: application/x-www-form-urlencoded' --data \"RefNo=\(ref)&Amount=\(String(format: "%.2f", summary.booking.subtotal_myr))&Status=1&TransId=T1&Signature=sig&MerchantCode=TEST\"")
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                    Text("Phase 2e wires real APNs + Apple Pay; Phase 3 wires real iPay88 signature verification.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 } else {
                     Button {
                         Task { await createIntent() }
