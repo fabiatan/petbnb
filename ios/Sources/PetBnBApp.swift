@@ -2,11 +2,13 @@ import SwiftUI
 
 @main
 struct PetBnBApp: App {
+    @State private var appState = AppState()
+
     var body: some Scene {
         WindowGroup {
-            // Fleshed out in Task 9 (RootView with auth gate + tabs).
-            Text("PetBnB — booting…")
-                .font(.headline)
+            RootView()
+                .environment(appState)
+                .task { await appState.bootstrap() }
         }
     }
 }
