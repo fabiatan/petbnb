@@ -7,7 +7,7 @@ import Supabase
 /// receipt.
 @MainActor
 final class BookingRealtimeService {
-    enum Event {
+    enum Event: Equatable {
         case changed         // some booking of the caller changed — refetch
     }
 
