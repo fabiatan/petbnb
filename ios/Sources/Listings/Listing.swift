@@ -59,3 +59,10 @@ struct SearchCriteria: Equatable {
             && checkOut > checkIn
     }
 }
+
+/// Nav destination for the listing detail — carries both the business to show
+/// and the search criteria so the booking flow can reuse dates/pet.
+struct ListingDestination: Hashable {
+    let business: BusinessSummary
+    let criteria: SearchCriteria
+}

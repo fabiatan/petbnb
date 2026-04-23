@@ -77,8 +77,8 @@ struct DiscoverView: View {
             .navigationDestination(for: SearchCriteria.self) { c in
                 SearchResultsView(criteria: c)
             }
-            .navigationDestination(for: BusinessSummary.self) { biz in
-                ListingDetailView(business: biz)
+            .navigationDestination(for: ListingDestination.self) { dest in
+                ListingDetailView(destination: dest)
             }
             .task { await loadPets() }
         }

@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ListingDetailView: View {
     @Environment(AppState.self) private var appState
-    let business: BusinessSummary
+    let destination: ListingDestination
+    private var business: BusinessSummary { destination.business }
+    private var criteria: SearchCriteria { destination.criteria }
 
     @State private var listing: Listing?
     @State private var selectedKennelID: UUID?
@@ -159,10 +161,9 @@ struct ListingDetailView: View {
             }
             Spacer()
             NavigationLink {
-                BookingPlaceholderView(
-                    business: business,
-                    kennel: kennel,
-                    criteria: defaultCriteriaForContinue()
+                BookingReviewView(
+                    destination: destination,
+                    kennel: kennel
                 )
             } label: {
                 Text("Continue").fontWeight(.semibold).padding(.horizontal, 20).padding(.vertical, 10)
@@ -172,20 +173,6 @@ struct ListingDetailView: View {
         }
         .padding()
         .background(.ultraThinMaterial)
-    }
-
-    /// Placeholder criteria for the 2b Continue stub. 2c will thread through the
-    /// real SearchCriteria from DiscoverView → ResultsView → this view.
-    private func defaultCriteriaForContinue() -> SearchCriteria {
-        let today = Date()
-        let week = Calendar.current.date(byAdding: .day, value: 7, to: today) ?? today
-        let weekPlusFive = Calendar.current.date(byAdding: .day, value: 5, to: week) ?? week
-        return SearchCriteria(
-            city: business.city,
-            checkIn: week,
-            checkOut: weekPlusFive,
-            petID: nil
-        )
     }
 
     private func load() async {

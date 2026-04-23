@@ -23,7 +23,7 @@ struct SearchResultsView: View {
                     )
                 }
                 ForEach(results) { biz in
-                    NavigationLink(value: biz) {
+                    NavigationLink(value: ListingDestination(business: biz, criteria: criteria)) {
                         BusinessCardRow(business: biz)
                     }
                     .buttonStyle(.plain)
