@@ -72,3 +72,21 @@ Config/
 - No edit or delete for pets in 2a; only create + read.
 - Sign-out button is in the Pet list toolbar for dev convenience; proper Settings screen comes in 2b or 2c.
 - Works only against local Supabase (`http://127.0.0.1:54321`) out of the box. The xcconfig also allows pointing at a hosted instance by changing `SUPABASE_URL` + `SUPABASE_ANON_KEY`.
+
+## Phase 2b — Discover + browse
+
+1. `RootView` now wraps the authenticated app in a `TabView` with Discover + Pets tabs.
+2. `DiscoverView` collects a `SearchCriteria` (city, check-in, check-out, selected pet) and pushes to `SearchResultsView`.
+3. `SearchResultsView` calls `ListingRepository.search(criteria:)` — case-insensitive city match, filtered to `kyc_status='verified' AND status='active'` via existing Phase 0 RLS.
+4. Tapping a result pushes to `ListingDetailView` which calls `ListingRepository.detail(businessId:)` to fetch the business + listing + active kennels.
+5. `ListingDetailView` has a photo carousel (built from `listing-photos` public bucket URLs) and a kennel picker. Tapping Continue navigates to `BookingPlaceholderView` — the real booking flow lands here in Phase 2c.
+6. Availability-aware filtering isn't done yet. The search returns any verified/active business in the city; Phase 2c runs the real availability check at booking-intent creation.
+
+## Known Phase 2b limitations
+
+- No ratings / review counts — still shows placeholder; wires up in Phase 4.
+- No favorites/wishlist.
+- No map view or distance-to-user.
+- No availability filter on search (Phase 2c).
+- Photo carousel has no full-screen zoom.
+- `BookingPlaceholderView` uses synthetic dates (today+7 → today+12) because the Phase 2b nav doesn't thread the real `SearchCriteria` through to the detail screen. Phase 2c plumbs it properly when the real booking-request screen takes over.
