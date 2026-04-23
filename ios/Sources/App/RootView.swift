@@ -10,7 +10,22 @@ struct RootView: View {
         case .signedOut:
             SignInView()
         case .signedIn:
+            MainTabs()
+        }
+    }
+}
+
+private struct MainTabs: View {
+    var body: some View {
+        TabView {
+            DiscoverView()
+                .tabItem {
+                    Label("Discover", systemImage: "magnifyingglass")
+                }
             PetListView()
+                .tabItem {
+                    Label("Pets", systemImage: "pawprint")
+                }
         }
     }
 }
