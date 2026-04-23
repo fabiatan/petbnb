@@ -19,13 +19,11 @@ private struct MainTabs: View {
     var body: some View {
         TabView {
             DiscoverView()
-                .tabItem {
-                    Label("Discover", systemImage: "magnifyingglass")
-                }
+                .tabItem { Label("Discover", systemImage: "magnifyingglass") }
+            MyBookingsView()
+                .tabItem { Label("Bookings", systemImage: "calendar") }
             PetListView()
-                .tabItem {
-                    Label("Pets", systemImage: "pawprint")
-                }
+                .tabItem { Label("Pets", systemImage: "pawprint") }
         }
     }
 }
