@@ -14,6 +14,7 @@ Two-sided marketplace for Malaysian pet boarding. iOS app for owners + Next.js w
 
 **Phase 1 (business dashboard) — complete.**
 
+- [x] **Phase 2a** — iOS scaffold, auth, pet profiles + vaccination cert upload
 - [ ] Phase 2 — iOS owner app (SwiftUI)
 - [ ] Phase 3 — iPay88 integration
 - [ ] Phase 4 — Reviews + ratings wiring
@@ -29,6 +30,17 @@ supabase start           # boots Postgres + Studio at :54323
 supabase db reset        # applies migrations + seed.sql
 supabase test db         # runs pgTAP suite
 ./supabase/scripts/verify-phase0.sh
+```
+
+### iOS app (Phase 2a+)
+
+See `ios/README.md` for xcodegen + xcconfig setup. TL;DR:
+```bash
+cd ios
+cp Config/Shared.local.xcconfig.example Config/Shared.local.xcconfig
+# paste Publishable key from `supabase status` into Shared.local.xcconfig
+xcodegen generate
+open PetBnB.xcodeproj
 ```
 
 ### Web app (runs from `web/`)
