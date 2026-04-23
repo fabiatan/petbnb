@@ -14,14 +14,15 @@ final class AppState {
     var status: Status = .bootstrapping
     let authService: AuthService
     let petService: PetService
+    let listingRepository: ListingRepository
 
     init() {
         let client = SupabaseClientProvider.shared
         self.authService = AuthService(client: client)
         self.petService = PetService(client: client)
+        self.listingRepository = ListingRepository(client: client)
     }
 
-    /// Called on app launch. Observes the Supabase auth session; updates `status`.
     func bootstrap() async {
         for await event in authService.authEvents() {
             switch event {
