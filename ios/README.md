@@ -111,3 +111,19 @@ Config/
 - No cancellation refund computation.
 - Cert expiry isn't preflight-checked on the client; the server RPC will reject a booking if the cert doesn't cover the stay. The error message surfaces in BookingReviewView's red text.
 - One pet per booking on the iOS side (the backend supports multiple; UI can add multi-select later).
+
+## Phase 2d — iPay88 webhook + Realtime
+
+1. `supabase/functions/ipay88-webhook/` receives iPay88's payment POST and calls `confirm_payment`. Ships with a MockVerifier; real HMAC plugs into `Ipay88Verifier` when sandbox creds arrive.
+2. Run locally:
+   ```bash
+   supabase functions serve ipay88-webhook --no-verify-jwt
+   ```
+3. `BookingRealtimeService` subscribes iOS to `public.bookings` filtered by `owner_id=eq.<caller>` using Supabase Swift's RealtimeV2 API. MyBookingsView starts the subscription on appear, stops on disappear.
+
+## Phase 2d known limitations
+
+- iPay88 HMAC verification is stubbed (`Ipay88Verifier` throws). Swap in real implementation when sandbox creds arrive — see comments in `verifier.ts`.
+- No automatic retry on webhook delivery failure — Phase 5+.
+- APNs push notifications are NOT in Phase 2d (deferred to Phase 2e).
+- Realtime reconnects automatically on network change, but if the user's JWT expires mid-session the subscription silently drops. Phase 5 polish.
