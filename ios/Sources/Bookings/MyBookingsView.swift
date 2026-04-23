@@ -45,8 +45,18 @@ struct MyBookingsView: View {
             .overlay {
                 if isLoading && bookings.isEmpty { ProgressView() }
             }
-            .task { await reload() }
+            .task {
+                await reload()
+                // Keep the subscription running while this view is on screen.
+                let events = await appState.bookingRealtimeService.start()
+                for await _ in events {
+                    await reload()
+                }
+            }
             .refreshable { await reload() }
+            .onDisappear {
+                Task { await appState.bookingRealtimeService.stop() }
+            }
         }
     }
 
