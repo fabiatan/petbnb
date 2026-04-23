@@ -15,12 +15,14 @@ final class AppState {
     let authService: AuthService
     let petService: PetService
     let listingRepository: ListingRepository
+    let bookingService: BookingService
 
     init() {
         let client = SupabaseClientProvider.shared
         self.authService = AuthService(client: client)
         self.petService = PetService(client: client)
         self.listingRepository = ListingRepository(client: client)
+        self.bookingService = BookingService(client: client)
     }
 
     func bootstrap() async {
