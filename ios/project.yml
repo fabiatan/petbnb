@@ -48,6 +48,8 @@ targets:
         NSPhotoLibraryUsageDescription: "Upload photos of your pet and their vaccination certificates."
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        SUPABASE_URL: "$(SUPABASE_URL)"
+        SUPABASE_ANON_KEY: "$(SUPABASE_ANON_KEY)"
     settings:
       base:
         PRODUCT_NAME: PetBnB
