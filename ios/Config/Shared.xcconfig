@@ -1,0 +1,8 @@
+// Shared build settings. Include local secrets in Shared.local.xcconfig
+// (gitignored). That file must define SUPABASE_URL and SUPABASE_ANON_KEY.
+
+#include? "Shared.local.xcconfig"
+
+// Defaults (safe to commit). Overridden by Shared.local.xcconfig if present.
+SUPABASE_URL = http:/$()/127.0.0.1:54321
+SUPABASE_ANON_KEY = REPLACE_WITH_PUBLISHABLE_KEY

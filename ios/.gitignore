@@ -1,0 +1,12 @@
+# Xcode / generated
+PetBnB.xcodeproj
+DerivedData
+build
+.build
+.swiftpm
+
+# Local secrets
+Config/Shared.local.xcconfig
+
+# OS
+.DS_Store

@@ -1,0 +1,5 @@
+// Copy to Shared.local.xcconfig and paste in the real values from `supabase status`.
+// Shared.local.xcconfig is gitignored.
+
+SUPABASE_URL = http:/$()/127.0.0.1:54321
+SUPABASE_ANON_KEY = sb_publishable_paste_here
