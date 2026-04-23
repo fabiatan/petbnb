@@ -90,3 +90,24 @@ Config/
 - No availability filter on search (Phase 2c).
 - Photo carousel has no full-screen zoom.
 - `BookingPlaceholderView` uses synthetic dates (today+7 → today+12) because the Phase 2b nav doesn't thread the real `SearchCriteria` through to the detail screen. Phase 2c plumbs it properly when the real booking-request screen takes over.
+
+## Phase 2c — Booking flow + payment stub
+
+1. Tapping Continue on `ListingDetailView` now pushes `BookingReviewView`, which shows the booking summary (business, kennel, dates, pet, price) and a Send-request / Book-now button (depending on `kennel.instant_book`).
+2. Submitting calls `BookingService.createBooking` which routes to Phase 0's `create_booking_request` or `create_instant_booking` RPC and returns the new booking id.
+3. The app pushes `MyBookingsView` which reloads on pull-down. Bookings are grouped by status: Pay now / Awaiting response / Upcoming / Completed / Other.
+4. `BookingDetailView` drills into a single booking. If status is `accepted` or `pending_payment`, a Pay-now button opens `PaymentStubView`. If status is `confirmed`, a Cancel button calls `cancel_booking_by_owner`.
+5. `PaymentStubView` calls `create_payment_intent` to get the `ipay88_reference`, then shows a DEV psql snippet to simulate the webhook:
+   ```
+   psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" \
+     -c "SELECT confirm_payment('<ref>', <amount>::numeric);"
+   ```
+   Running this flips the booking to `confirmed`. Tap Refresh status to see the updated state.
+
+## Phase 2c known limitations
+
+- Payment completion is manual (via psql). Phase 2d wires real iPay88 + webhook handling.
+- No realtime status push — pull-to-refresh.
+- No cancellation refund computation.
+- Cert expiry isn't preflight-checked on the client; the server RPC will reject a booking if the cert doesn't cover the stay. The error message surfaces in BookingReviewView's red text.
+- One pet per booking on the iOS side (the backend supports multiple; UI can add multi-select later).

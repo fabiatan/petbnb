@@ -16,6 +16,7 @@ Two-sided marketplace for Malaysian pet boarding. iOS app for owners + Next.js w
 
 - [x] **Phase 2a** — iOS scaffold, auth, pet profiles + vaccination cert upload
 - [x] **Phase 2b** — iOS Discover + search + listing detail (browse)
+- [x] **Phase 2c** — iOS booking creation + payment-intent stub + My Bookings
 - [ ] Phase 2 — iOS owner app (SwiftUI)
 - [ ] Phase 3 — iPay88 integration
 - [ ] Phase 4 — Reviews + ratings wiring
